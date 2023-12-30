@@ -55,7 +55,28 @@ function Create(props) {
     </form>
   </article>
 }
+function Update(props) {
+  const [title, setTitle] = useState(props.title);
+  const [body, setBody] = useState(props.body);
 
+  return <article>
+      <h2>Update</h2>
+      <form onSubmit={event => {
+        event.preventDefault();
+        const title = event.target.title.value;
+        const body = event.target.body.value;
+        props.onUpdate(title, body);
+      }}>
+        <p><input type="text" name="title" placeholder="title" value={title} onChange={(event => {
+          setTitle(event.target.value); //input안의 value값이 바뀔때 마다 다시 랜더링
+        })}/></p>
+        <p><textarea name="body" placeholder="body" value={body} onChange={(event => {
+          setBody(event.target.value);
+        })}/></p>
+        <p><input type="submit" value="Update" /></p>
+      </form>
+    </article>
+}
 
 
 
@@ -70,9 +91,11 @@ export default function App() {
   let [nextId, setNextId] = useState(4); // topics에 새롭게 추가 될 요소의 id 설정해주기 위해
 
   let content = null;
+  let contextControl = null; //mode가 READ일때만 update 버튼을 렌더링
+
   if (mode === "WELCOME") {
     content = <Article title="WELCOME" body="Hello, WELCOME!"></Article>
-  } else if (mode === "REACT") {
+  } else if (mode === "READ") {
     let title, body = null;
     for (let i = 0; i<topics.length; i++) {
       if (topics[i].id === id) {
@@ -81,6 +104,21 @@ export default function App() {
       }
     }
     content = <Article title={title} body={body}></Article>
+    contextControl = <><li><a href={'/update'+ id} onClick={event => {
+      event.preventDefault();
+      setMode('UPDATE'); //update버튼을 눌렀을 때 mode가 UPDATE인 경우를 만든다.
+    }}>Update</a></li>
+    <li><input type='button' value="Delete" onClick={() => {
+      const newTopics = [];
+      for(let i=0; i<topics.length; i++) {
+        if(topics[i].id !== id) {
+          newTopics.push(topics[i]);
+        }
+      }
+      setTopics(newTopics);
+      setMode("WELCOME");
+    }} /></li>
+    </>
   }else if (mode === "CREAT") {
     content = <Create onCreate={(_title, _body)=> {
       //Create 컴포넌트에서 전달받은 title과 body값을 사용
@@ -94,6 +132,28 @@ export default function App() {
       setId(nextId);
       setNextId(nextId+1);
     }}></Create>
+  }else if (mode === "UPDATE") {
+    //update를 눌렀을때 클릭 한 내용을 화면에 나오게 하기 위해
+    let title, body = null;
+    for (let i = 0; i<topics.length; i++) {
+      if (topics[i].id === id) {
+        title = topics[i].title;
+        body = topics[i].body;
+      }
+    }
+    content = <Update title={title} body={body} onUpdate={(title, body)=> {
+      const updateTopic = {id:id, title:title, body:body}
+      const newTopic = [...topics];
+      for(let i = 0; i<newTopic.length; i++) {
+        if(newTopic[i].id === id) {
+          newTopic[i] = updateTopic;
+          break;
+        }
+      }
+      setTopics(newTopic);
+      setMode('READ');
+    }}></Update>
+
   }
 
 
@@ -103,15 +163,20 @@ export default function App() {
         setMode("WELCOME")
       }}></Header>
       <Nav topics={topics} onChangeMode={(id) => {
-        setMode("REACT")
+        setMode("READ")
         setId(id);
         // 클릭했을 때 id값이 바뀌면 useState의 id값이 바뀐다.
       }}></Nav>
       {content}
-      <a href="/create" onClick={event => {
-        event.preventDefault();
-        setMode('CREAT');
-      }}>Create</a>
+      <ul>
+        <li>
+          <a href="/create" onClick={event => {
+          event.preventDefault();
+          setMode('CREAT');
+        }}>Create</a>
+        </li>
+        {contextControl}
+      </ul>
     </div>
   );
 }
